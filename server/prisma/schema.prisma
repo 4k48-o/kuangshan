@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 班次数据表
+model ShiftData {
+  id              String            @id @default(uuid())
+  shiftDate       DateTime          @map("shift_date") @db.Date
+  shiftType       String            @map("shift_type") // '早班', '中班', '晚班'
+  runTime         Decimal?          @map("run_time") @db.Decimal(4, 2) // 作业时间 (小时)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  createdBy       String?           @map("created_by")
+  
+  rawOreData      RawOreData?
+  concentrateData ConcentrateData?
+  tailingsData    TailingsData?
+  metalBalance    MetalBalance?
+
+  @@unique([shiftDate, shiftType])
+  @@map("shift_data")
+}
+
+// 原矿数据表
+model RawOreData {
+  id          String    @id @default(uuid())
+  shiftId     String    @unique @map("shift_id")
+  wetWeight   Decimal   @map("wet_weight") @db.Decimal(10, 2)
+  moisture    Decimal   @map("moisture") @db.Decimal(5, 2)
+  agGrade     Decimal?  @map("ag_grade") @db.Decimal(8, 4)
+  pbGrade     Decimal?  @map("pb_grade") @db.Decimal(8, 4)
+  znGrade     Decimal?  @map("zn_grade") @db.Decimal(8, 4)
+
+  shift       ShiftData @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@map("raw_ore_data")
+}
+
+// 精矿数据表
+model ConcentrateData {
+  id          String    @id @default(uuid())
+  shiftId     String    @unique @map("shift_id")
+  wetWeight   Decimal   @map("wet_weight") @db.Decimal(10, 2)
+  moisture    Decimal   @map("moisture") @db.Decimal(5, 2)
+  agGrade     Decimal?  @map("ag_grade") @db.Decimal(8, 4)
+  pbGrade     Decimal?  @map("pb_grade") @db.Decimal(8, 4)
+  znGrade     Decimal?  @map("zn_grade") @db.Decimal(8, 4)
+
+  shift       ShiftData @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@map("concentrate_data")
+}
+
+// 尾矿数据表
+model TailingsData {
+  id          String    @id @default(uuid())
+  shiftId     String    @unique @map("shift_id")
+  wetWeight   Decimal?  @map("wet_weight") @db.Decimal(10, 2) // 尾矿湿量可能不直接测量
+  moisture    Decimal?  @map("moisture") @db.Decimal(5, 2)
+  fineness    Decimal?  @map("fineness") @db.Decimal(5, 2) // 细度 (%)
+  agGrade     Decimal?  @map("ag_grade") @db.Decimal(8, 4)
+  pbGrade     Decimal?  @map("pb_grade") @db.Decimal(8, 4)
+  znGrade     Decimal?  @map("zn_grade") @db.Decimal(8, 4)
+
+  shift       ShiftData @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@map("tailings_data")
+}
+
+// 金属平衡表
+model MetalBalance {
+  id                   String    @id @default(uuid())
+  shiftId              String    @unique @map("shift_id")
+  dryWeightRaw         Decimal   @map("dry_weight_raw") @db.Decimal(12, 4)
+  dryWeightConcentrate Decimal   @map("dry_weight_concentrate") @db.Decimal(12, 4)
+  dryWeightTailings    Decimal?  @map("dry_weight_tailings") @db.Decimal(12, 4)
+  
+  agRecovery           Decimal?  @map("ag_recovery") @db.Decimal(10, 2)
+  pbRecovery           Decimal?  @map("pb_recovery") @db.Decimal(10, 2)
+  znRecovery           Decimal?  @map("zn_recovery") @db.Decimal(10, 2)
+  
+  concentrateYield     Decimal?  @map("concentrate_yield") @db.Decimal(10, 2)
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  shift                ShiftData @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@map("metal_balance")
+}
