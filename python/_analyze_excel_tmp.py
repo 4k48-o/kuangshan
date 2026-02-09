@@ -1,6 +1,8 @@
+import os
 import pandas as pd
 
-file_path = '/Users/laoyang/code/ai/kuangshan_new/完成生产日报表2025.06.28.xlsx'
+_base = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+file_path = os.path.join(_base, "data", "excel", "日报样本", "完成生产日报表2025.06.28.xlsx")
 
 def analyze_sheet(xl, sheet_name):
     print(f"\n{'='*50}")

@@ -1,3 +1,11 @@
+# 选矿生产管理系统 (kuangshan_new)
+
+前端：React + TypeScript + Vite；后端：Express + Prisma + MySQL。
+
+**项目结构**：详见 [项目结构说明.md](./项目结构说明.md)。主要目录：`src/` 前端、`server/` 后端、`python/` Python 脚本、`data/excel/` Excel 模板与报表数据。
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
