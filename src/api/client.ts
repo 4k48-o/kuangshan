@@ -37,7 +37,7 @@ export interface TrendData {
   processedWeight: number;
 }
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
 const TOKEN_KEY = 'cf_mineral_token';
 
 function getAuthHeaders(): HeadersInit {
@@ -170,6 +170,7 @@ export const apiClient = {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
+    
     const response = await fetch(`${API_BASE_URL}/parse-test-report`, {
       method: 'POST',
       headers,
@@ -177,8 +178,23 @@ export const apiClient = {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || '解析失败');
+      let errorMessage = '文件解析失败';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch {
+        // 如果响应不是 JSON，使用状态码判断
+        if (response.status === 401) {
+          errorMessage = '未登录或登录已过期，请重新登录';
+        } else if (response.status === 400) {
+          errorMessage = '请上传有效的 Excel 文件';
+        } else if (response.status === 413) {
+          errorMessage = '文件过大，请上传小于 10MB 的文件';
+        } else {
+          errorMessage = `上传失败 (${response.status})`;
+        }
+      }
+      throw new Error(errorMessage);
     }
     
     return response.json();

@@ -4,6 +4,23 @@
 
 **项目结构**：详见 [项目结构说明.md](./项目结构说明.md)。主要目录：`src/` 前端、`server/` 后端、`python/` Python 脚本、`data/excel/` Excel 模板与报表数据。
 
+### 前端部署到 Nginx
+
+1. **构建**（在项目根目录）：
+   ```bash
+   npm run build
+   ```
+   产物在 `dist/`，且会使用 `.env.production` 中的 `VITE_API_BASE_URL=/api`。
+
+2. **Nginx**：使用 `deploy/nginx.conf` 示例，将 `root` 改为你的 `dist` 绝对路径（如 `/usr/local/kuangshan/dist`），将 `server_name` 改为域名或 IP，然后：
+   ```bash
+   sudo cp deploy/nginx.conf /etc/nginx/sites-available/kuangshan
+   sudo ln -sf /etc/nginx/sites-available/kuangshan /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+3. **后端**：需在服务器上单独运行（如 `cd server && npm start` 或 pm2），并保证监听 `3000`，Nginx 会把 `/api` 代理到 `http://127.0.0.1:3000/api`。
+
 ---
 
 # React + TypeScript + Vite

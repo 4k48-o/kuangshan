@@ -7,8 +7,8 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-reac
 import 'react-day-picker/dist/style.css';
 
 interface DatePickerProps {
-  date: Date;
-  onChange: (date: Date) => void;
+  date: Date | null | undefined;
+  onChange: (date: Date | null) => void;
   className?: string;
 }
 
@@ -28,11 +28,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({ date, onChange, classNam
   }, []);
 
   const handleSelect = (selected: Date | undefined) => {
-    if (selected) {
-      onChange(selected);
-      setIsOpen(false);
-    }
+    onChange(selected || null);
+    setIsOpen(false);
   };
+
+  const displayDate = date && isValid(date) ? date : null;
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -42,7 +42,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ date, onChange, classNam
       >
         <CalendarIcon className="w-4 h-4 mr-2 text-slate-500" />
         <span className="text-sm text-slate-700 font-medium">
-          {isValid(date) ? format(date, 'yyyy-MM-dd') : '选择日期'}
+          {displayDate ? format(displayDate, 'yyyy-MM-dd') : '选择日期'}
         </span>
       </button>
 
@@ -56,13 +56,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({ date, onChange, classNam
           `}</style>
           <DayPicker
             mode="single"
-            selected={date}
+            selected={displayDate || undefined}
             onSelect={handleSelect}
             locale={zhCN}
             showOutsideDays
             components={{
-                IconLeft: () => <ChevronLeft className="w-4 h-4" />,
-                IconRight: () => <ChevronRight className="w-4 h-4" />
+                Chevron: ({ orientation, className }: { orientation?: 'up' | 'down' | 'left' | 'right'; className?: string }) =>
+                  orientation === 'right' ? <ChevronRight className={className ?? 'w-4 h-4'} /> : <ChevronLeft className={className ?? 'w-4 h-4'} />,
             }}
           />
         </div>

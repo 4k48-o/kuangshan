@@ -30,3 +30,21 @@ uploads/
 data/
 .venv/
 venv/
+
+# 环境变量文件（包含敏感信息）
+.env
+.env.local
+.env.production
+.env.*.local
+server/.env
+
+# 部署相关文件（不上传 GitHub）
+deploy/
+
+# 测试文件和临时文件
+*.xlsx
+*.xls
+
+# npm lock 文件（项目使用 pnpm，保留 pnpm-lock.yaml）
+package-lock.json
+server/package-lock.json

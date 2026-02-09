@@ -1,43 +1,43 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { Save, AlertCircle, Upload, FileText } from 'lucide-react';
+import { Save, AlertCircle, Upload } from 'lucide-react';
 import { apiClient, ShiftReportInput } from '../api/client';
 
 export const DataEntry: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<ShiftReportInput>({
+
+  const { register, handleSubmit, reset, setValue } = useForm<ShiftReportInput>({
     defaultValues: {
-      shiftDate: format(new Date(), 'yyyy-MM-dd'),
-      shiftType: '早班',
-      runTime: 8,
+      shiftDate: format(new Date(), 'yyyy-MM-dd'), // 保留今天的日期作为默认值
+      shiftType: '', // 班次为空，用户需选择
+      runTime: undefined, // 作业时间为空
       rawOre: {
-        wetWeight: 128,
-        moisture: 3,
-        pbGrade: 4.07,
-        znGrade: 0,
-        agGrade: 230
+        wetWeight: undefined,
+        moisture: undefined,
+        pbGrade: undefined,
+        znGrade: undefined,
+        agGrade: undefined
       },
       concentrate: {
-        wetWeight: 0,
-        moisture: 9,
-        pbGrade: 66.04,
-        znGrade: 0,
-        agGrade: 3380
+        wetWeight: undefined,
+        moisture: undefined,
+        pbGrade: undefined,
+        znGrade: undefined,
+        agGrade: undefined
       },
       tailings: {
-        pbGrade: 0.09,
-        znGrade: 0,
-        agGrade: 4
+        pbGrade: undefined,
+        znGrade: undefined,
+        agGrade: undefined
       }
     }
   });
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,13 +74,12 @@ export const DataEntry: React.FC = () => {
         if (parsed.tailings.fineness !== undefined) setValue('tailings.fineness', parsed.tailings.fineness);
       }
       
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setUploadError(err.message || '文件解析失败');
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000);
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : '文件解析失败');
     } finally {
       setUploading(false);
-      // Reset file input
       event.target.value = '';
     }
   };
@@ -88,7 +87,7 @@ export const DataEntry: React.FC = () => {
   const onSubmit = async (data: ShiftReportInput) => {
     setLoading(true);
     setSubmitError(null);
-    setSuccess(false);
+    setSubmitSuccess(false);
 
     try {
       // Convert string inputs to numbers
@@ -118,10 +117,34 @@ export const DataEntry: React.FC = () => {
       };
 
       await apiClient.createReport(processedData);
-      setSuccess(true);
-      reset();
-    } catch (err: any) {
-      setSubmitError(err.message || '保存失败，请重试');
+      setSubmitSuccess(true);
+      setTimeout(() => setSubmitSuccess(false), 3000);
+      reset({
+        shiftDate: format(new Date(), 'yyyy-MM-dd'),
+        shiftType: '',
+        runTime: undefined,
+        rawOre: {
+          wetWeight: undefined,
+          moisture: undefined,
+          pbGrade: undefined,
+          znGrade: undefined,
+          agGrade: undefined
+        },
+        concentrate: {
+          wetWeight: undefined,
+          moisture: undefined,
+          pbGrade: undefined,
+          znGrade: undefined,
+          agGrade: undefined
+        },
+        tailings: {
+          pbGrade: undefined,
+          znGrade: undefined,
+          agGrade: undefined
+        }
+      });
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : '保存失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -178,94 +201,60 @@ export const DataEntry: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">生产数据录入</h1>
-        <p className="text-slate-500">请输入当班的生产统计数据</p>
+        <p className="text-slate-500">可先上传化验单自动填充品位数据，或直接手动录入后点击保存并计算</p>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6 border-b border-slate-200">
-        <nav className="flex space-x-4">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === 'upload'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Upload className="w-4 h-4 inline mr-2" />
-            上传化验单
-          </button>
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === 'manual'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <FileText className="w-4 h-4 inline mr-2" />
-            手动录入数据
-          </button>
-        </nav>
-      </div>
-
-      {/* Upload Tab */}
-      {activeTab === 'upload' && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6">
-          <h2 className="text-lg font-semibold mb-4">上传化验单</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                选择 Excel 文件（支持 .xlsx, .xls）
-              </label>
-              <div className="flex items-center space-x-4">
-                <label className="flex-1 cursor-pointer">
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                  <div className="px-4 py-3 border-2 border-dashed border-slate-300 rounded-md hover:border-blue-500 transition-colors text-center">
-                    {uploading ? (
-                      <span className="text-blue-600">解析中...</span>
-                    ) : (
-                      <span className="text-slate-600">点击选择文件或拖拽文件到此处</span>
-                    )}
-                  </div>
-                </label>
-              </div>
-              <p className="mt-2 text-xs text-slate-500">
-                请上传符合模板格式的化验单 Excel 文件，系统将自动提取原矿、精矿、尾矿数据
-              </p>
+      {/* 上传化验单（可选）：解析后覆盖表单中的品位等数据 */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <Upload className="w-5 h-5 mr-2 text-slate-500" />
+          上传化验单（可选）
+        </h2>
+        <div className="space-y-4">
+          <label className="block cursor-pointer">
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileUpload}
+              disabled={uploading}
+              className="hidden"
+            />
+            <div className="px-4 py-3 border-2 border-dashed border-slate-300 rounded-md hover:border-blue-500 transition-colors text-center">
+              {uploading ? (
+                <span className="text-blue-600">解析中...</span>
+              ) : (
+                <span className="text-slate-600">点击选择 Excel 文件（.xlsx / .xls），化验单数据将覆盖下方手动录入的品位数据</span>
+              )}
             </div>
-            {uploadError && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-center text-red-700">
-                <AlertCircle className="w-5 h-5 mr-2" />
-                {uploadError}
-              </div>
-            )}
-            {success && !uploading && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md flex items-center text-green-700">
-                <Save className="w-5 h-5 mr-2" />
-                数据已自动填充，请检查并补充基础数据后提交
-              </div>
-            )}
-          </div>
+          </label>
+          <p className="text-xs text-slate-500">
+            上传后系统将自动填充日期、班次及原矿/精矿/尾矿品位；未上传则直接在下表手动录入后保存并计算即可。
+          </p>
+          {uploadError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-center text-red-700">
+              <AlertCircle className="w-5 h-5 mr-2 shrink-0" />
+              {uploadError}
+            </div>
+          )}
+          {uploadSuccess && !uploading && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-md flex items-center text-green-700">
+              <Save className="w-5 h-5 mr-2 shrink-0" />
+              化验单数据已填充，请补充基础数据（处理量、水分等）后点击「保存并计算」
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {submitError && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center text-red-700">
-          <AlertCircle className="w-5 h-5 mr-2" />
+          <AlertCircle className="w-5 h-5 mr-2 shrink-0" />
           {submitError}
         </div>
       )}
 
-      {success && activeTab === 'manual' && (
+      {submitSuccess && (
         <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md flex items-center text-green-700">
-          <Save className="w-5 h-5 mr-2" />
+          <Save className="w-5 h-5 mr-2 shrink-0" />
           保存成功！
         </div>
       )}
@@ -288,6 +277,7 @@ export const DataEntry: React.FC = () => {
                 {...register('shiftType', { required: true })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option value="">请选择班次</option>
                 <option value="甲班">甲班</option>
                 <option value="乙班">乙班</option>
                 <option value="丙班">丙班</option>
@@ -342,25 +332,20 @@ export const DataEntry: React.FC = () => {
           </div>
         </div>
 
-        {/* Only show ore data inputs in manual entry mode */}
-        {activeTab === 'manual' && (
-          <>
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-              <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">原矿数据</h2>
-              <InputGroup prefix="rawOre" registerName="rawOre" />
-            </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+          <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">原矿数据</h2>
+          <InputGroup prefix="rawOre" registerName="rawOre" />
+        </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-              <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">精矿数据</h2>
-              <InputGroup prefix="concentrate" registerName="concentrate" />
-            </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+          <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">精矿数据</h2>
+          <InputGroup prefix="concentrate" registerName="concentrate" />
+        </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-              <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">尾矿数据</h2>
-              <InputGroup prefix="tailings" registerName="tailings" />
-            </div>
-          </>
-        )}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+          <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">尾矿数据</h2>
+          <InputGroup prefix="tailings" registerName="tailings" showFineness />
+        </div>
 
         <div className="flex justify-end">
           <button

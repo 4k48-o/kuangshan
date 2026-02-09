@@ -766,19 +766,36 @@ app.get('/api/reports/monthly-stats', async (req, res) => {
 
 // Parse Excel test report (化验单)
 app.post('/api/parse-test-report', upload.single('file'), async (req, res) => {
+  let filePath: string | undefined;
   try {
     if (!req.file) {
       return res.status(400).json({ error: '请上传文件' });
     }
 
-    const filePath = req.file.path;
-    const workbook = XLSX.readFile(filePath);
+    filePath = req.file.path;
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(400).json({ error: '上传的文件不存在' });
+    }
+
+    let workbook;
+    try {
+      workbook = XLSX.readFile(filePath);
+    } catch (err: any) {
+      return res.status(400).json({ error: `无法读取 Excel 文件: ${err.message || '文件格式错误'}` });
+    }
+
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      return res.status(400).json({ error: 'Excel 文件中没有工作表' });
+    }
+
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null }) as any[][];
 
-    // Clean up uploaded file
-    fs.unlinkSync(filePath);
+    if (!data || data.length < 4) {
+      return res.status(400).json({ error: 'Excel 文件格式不正确，数据行数不足（至少需要 4 行）' });
+    }
 
     // Parse Excel structure
     // Row 0: Title
@@ -812,48 +829,71 @@ app.post('/api/parse-test-report', upload.single('file'), async (req, res) => {
       }
     }
 
-    // Parse data rows (row 4, 5, 6)
-    // Row 3 has headers: [null, "铅", "锌", "银", "铜", "硫", "水分", "细度"]
-    // Row 4: ["原矿", 3.71, 0.55, 214, 0.06, null, null, null]
-    // Row 5: ["铅精", 62.31, 5.28, 3090, 0.79, null, null, null]
-    // Row 6: ["尾矿", 0.15, 0.08, 4, 0.003, null, null, null]
+    // Parse data rows
+    // 实际文件结构：
+    // Row 3 (index 3): [null, null, "铅", "锌", "银", "铜", "硫", "水分", "细度"]
+    //   - 表头列索引：index 2="铅", index 3="锌", index 4="银", index 7="水分", index 8="细度"
+    // Row 4 (index 4): ["SL-", "原矿", 5.89, 0.9, 277, 0.05, null, null, null]
+    //   - 名称在第2列（index 1），数据列索引与表头对应：index 2=铅值, index 3=锌值, index 4=银值
+    // Row 5 (index 5): ["SL-", "铅精", 63.27, 4.03, 2720, ...]
+    // Row 6 (index 6): ["SL-", "尾矿", 0.08, 0.07, 5, ...]
 
-    if (data.length >= 7) {
-      // Find header row (row 3)
+    if (data.length >= 5) {
+      // Find header row (row 3, index 3)
       const headerRow = data[3] || [];
+      // 在表头行中查找各列的索引位置
       const pbCol = headerRow.findIndex((h: any) => h === '铅' || String(h).includes('铅'));
       const znCol = headerRow.findIndex((h: any) => h === '锌' || String(h).includes('锌'));
       const agCol = headerRow.findIndex((h: any) => h === '银' || String(h).includes('银'));
       const moistureCol = headerRow.findIndex((h: any) => h === '水分' || String(h).includes('水分'));
       const finenessCol = headerRow.findIndex((h: any) => h === '细度' || String(h).includes('细度'));
 
-      // Parse 原矿 (row 4)
-      if (data[4] && data[4][0] && String(data[4][0]).includes('原矿')) {
-        rawOre = {
-          pbGrade: pbCol >= 0 && data[4][pbCol] ? Number(data[4][pbCol]) : 0,
-          znGrade: znCol >= 0 && data[4][znCol] ? Number(data[4][znCol]) : 0,
-          agGrade: agCol >= 0 && data[4][agCol] ? Number(data[4][agCol]) : 0,
-        };
-      }
+      // 遍历数据行（从第5行开始，index 4），查找原矿、精矿、尾矿
+      for (let i = 4; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length < 3) continue;
 
-      // Parse 铅精/铅精矿 (row 5)
-      if (data[5] && data[5][0] && (String(data[5][0]).includes('铅精') || String(data[5][0]).includes('精矿'))) {
-        concentrate = {
-          pbGrade: pbCol >= 0 && data[5][pbCol] ? Number(data[5][pbCol]) : 0,
-          znGrade: znCol >= 0 && data[5][znCol] ? Number(data[5][znCol]) : 0,
-          agGrade: agCol >= 0 && data[5][agCol] ? Number(data[5][agCol]) : 0,
-          moisture: moistureCol >= 0 && data[5][moistureCol] ? Number(data[5][moistureCol]) : 9, // Default 9
-        };
-      }
+        // 名称在第2列（index 1）
+        const name = String(row[1] || '').trim();
+        if (!name) continue;
+        
+        // Parse 原矿
+        if (name.includes('原矿')) {
+          rawOre = {
+            pbGrade: pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' ? Number(row[pbCol]) : 0,
+            znGrade: znCol >= 0 && row[znCol] != null && row[znCol] !== '' ? Number(row[znCol]) : 0,
+            agGrade: agCol >= 0 && row[agCol] != null && row[agCol] !== '' ? Number(row[agCol]) : 0,
+          };
+        }
 
-      // Parse 尾矿 (row 6)
-      if (data[6] && data[6][0] && String(data[6][0]).includes('尾矿')) {
-        tailings = {
-          pbGrade: pbCol >= 0 && data[6][pbCol] ? Number(data[6][pbCol]) : 0,
-          znGrade: znCol >= 0 && data[6][znCol] ? Number(data[6][znCol]) : 0,
-          agGrade: agCol >= 0 && data[6][agCol] ? Number(data[6][agCol]) : 0,
-          fineness: finenessCol >= 0 && data[6][finenessCol] ? Number(data[6][finenessCol]) : undefined,
-        };
+        // Parse 铅精/铅精矿
+        if (name.includes('铅精') || name.includes('精矿')) {
+          concentrate = {
+            pbGrade: pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' ? Number(row[pbCol]) : 0,
+            znGrade: znCol >= 0 && row[znCol] != null && row[znCol] !== '' ? Number(row[znCol]) : 0,
+            agGrade: agCol >= 0 && row[agCol] != null && row[agCol] !== '' ? Number(row[agCol]) : 0,
+            moisture: moistureCol >= 0 && row[moistureCol] != null && row[moistureCol] !== '' ? Number(row[moistureCol]) : undefined,
+          };
+        }
+
+        // Parse 尾矿
+        if (name.includes('尾矿')) {
+          tailings = {
+            pbGrade: pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' ? Number(row[pbCol]) : 0,
+            znGrade: znCol >= 0 && row[znCol] != null && row[znCol] !== '' ? Number(row[znCol]) : 0,
+            agGrade: agCol >= 0 && row[agCol] != null && row[agCol] !== '' ? Number(row[agCol]) : 0,
+            fineness: finenessCol >= 0 && row[finenessCol] != null && row[finenessCol] !== '' ? Number(row[finenessCol]) : undefined,
+          };
+        }
+      }
+    }
+
+    // Clean up uploaded file
+    if (filePath && fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (err) {
+        console.warn('Failed to delete uploaded file:', err);
       }
     }
 
@@ -865,8 +905,17 @@ app.post('/api/parse-test-report', upload.single('file'), async (req, res) => {
       tailings,
     });
   } catch (error: any) {
+    // Clean up uploaded file on error
+    if (filePath && fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (err) {
+        console.warn('Failed to delete uploaded file on error:', err);
+      }
+    }
     console.error('Excel parse error:', error);
-    res.status(500).json({ error: `解析失败: ${error.message}` });
+    const errorMessage = error.message || '未知错误';
+    res.status(500).json({ error: `解析失败: ${errorMessage}` });
   }
 });
 

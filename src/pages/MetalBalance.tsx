@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { ChevronDown, ChevronRight, Search, RotateCcw } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { DatePicker } from '../components/ui/DatePicker';
@@ -19,14 +19,10 @@ export const MetalBalance: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const defaultEnd = new Date();
-  const defaultStart = subDays(defaultEnd, 30);
-  const [startDate, setStartDate] = useState<Date>(defaultStart);
-  const [endDate, setEndDate] = useState<Date>(defaultEnd);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [shiftType, setShiftType] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState<{ startDate: string; endDate: string; shiftType: string }>({
-    startDate: format(defaultStart, 'yyyy-MM-dd'),
-    endDate: format(defaultEnd, 'yyyy-MM-dd'),
+  const [appliedFilters, setAppliedFilters] = useState<{ startDate?: string; endDate?: string; shiftType: string }>({
     shiftType: '',
   });
 
@@ -55,20 +51,18 @@ export const MetalBalance: React.FC = () => {
 
   const handleSearch = () => {
     setAppliedFilters({
-      startDate: format(startDate, 'yyyy-MM-dd'),
-      endDate: format(endDate, 'yyyy-MM-dd'),
+      startDate: startDate ? format(startDate, 'yyyy-MM-dd') : undefined,
+      endDate: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
       shiftType,
     });
     setPage(1);
   };
 
   const handleReset = () => {
-    const end = new Date();
-    const start = subDays(end, 30);
-    setStartDate(start);
-    setEndDate(end);
+    setStartDate(null);
+    setEndDate(null);
     setShiftType('');
-    setAppliedFilters({ startDate: format(start, 'yyyy-MM-dd'), endDate: format(end, 'yyyy-MM-dd'), shiftType: '' });
+    setAppliedFilters({ shiftType: '' });
     setPage(1);
   };
 
