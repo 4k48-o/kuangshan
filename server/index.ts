@@ -830,13 +830,14 @@ app.post('/api/parse-test-report', upload.single('file'), async (req, res) => {
     }
 
     // Parse data rows
-    // 实际文件结构：
-    // Row 3 (index 3): [null, null, "铅", "锌", "银", "铜", "硫", "水分", "细度"]
-    //   - 表头列索引：index 2="铅", index 3="锌", index 4="银", index 7="水分", index 8="细度"
-    // Row 4 (index 4): ["SL-", "原矿", 5.89, 0.9, 277, 0.05, null, null, null]
-    //   - 名称在第2列（index 1），数据列索引与表头对应：index 2=铅值, index 3=锌值, index 4=银值
-    // Row 5 (index 5): ["SL-", "铅精", 63.27, 4.03, 2720, ...]
-    // Row 6 (index 6): ["SL-", "尾矿", 0.08, 0.07, 5, ...]
+    // 实际文件结构（2.2.1CF格式）：
+    // Row 2 (index 2): ["试样名称", "分析成分", ...]
+    // Row 3 (index 3): [null, "铅", "锌", "银", "铜", "硫", "水分", "细度"]
+    //   - 表头列索引：index 1="铅", index 2="锌", index 3="银", index 6="水分", index 7="细度"
+    // Row 4 (index 4): ["原矿", 3.97, 0.34, 231, ...]
+    //   - 名称在第1列（index 0），数据列索引与表头对应：index 1=铅值, index 2=锌值, index 3=银值
+    // Row 5 (index 5): ["铅精", 59.35, 3.55, 3270, ...]
+    // Row 6 (index 6): ["尾矿", 0.13, 0.07, 7, ...]
 
     if (data.length >= 5) {
       // Find header row (row 3, index 3)
@@ -848,42 +849,74 @@ app.post('/api/parse-test-report', upload.single('file'), async (req, res) => {
       const moistureCol = headerRow.findIndex((h: any) => h === '水分' || String(h).includes('水分'));
       const finenessCol = headerRow.findIndex((h: any) => h === '细度' || String(h).includes('细度'));
 
+      // Debug: 如果找不到关键列，记录日志
+      if (pbCol < 0 || agCol < 0) {
+        console.warn('Excel parse: Missing columns. Header row:', headerRow);
+        console.warn(`Columns found - Pb: ${pbCol}, Zn: ${znCol}, Ag: ${agCol}`);
+      }
+
       // 遍历数据行（从第5行开始，index 4），查找原矿、精矿、尾矿
       for (let i = 4; i < data.length; i++) {
         const row = data[i];
-        if (!row || row.length < 3) continue;
+        if (!row || row.length < 2) continue;
 
-        // 名称在第2列（index 1）
-        const name = String(row[1] || '').trim();
-        if (!name) continue;
+        // 名称列查找：兼容两种格式
+        // 2.2.1格式：名称在 index 0，如 ['原矿', 3.97, ...]
+        // 7.3.3格式：统一编号在 index 0（如'SL-'），名称在 index 1，如 ['SL-', '原矿', 5.89, ...]
+        let name = '';
+        const cell0 = String(row[0] || '').trim().toLowerCase();
+        const cell1 = String(row[1] || '').trim().toLowerCase();
         
-        // Parse 原矿
+        // 如果 index 0 是统一编号（如'SL-'），则名称在 index 1
+        if (cell0 === 'sl-' || cell0.startsWith('sl') || cell0.match(/^[a-z]+-/)) {
+          name = String(row[1] || '').trim();
+        } else if (cell0.includes('原矿') || cell0.includes('铅精') || cell0.includes('精矿') || cell0.includes('尾矿')) {
+          name = String(row[0] || '').trim();
+        } else if (cell1.includes('原矿') || cell1.includes('铅精') || cell1.includes('精矿') || cell1.includes('尾矿')) {
+          name = String(row[1] || '').trim();
+        }
+        
+        if (!name || name === 'nan' || name === '') continue;
+        
+        // Parse 原矿（只解析品位，不解析湿量和水分）
         if (name.includes('原矿')) {
+          const pbVal = pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' && String(row[pbCol]).toLowerCase() !== 'nan' ? Number(row[pbCol]) : 0;
+          const znVal = znCol >= 0 && row[znCol] != null && row[znCol] !== '' && String(row[znCol]).toLowerCase() !== 'nan' ? Number(row[znCol]) : 0;
+          const agVal = agCol >= 0 && row[agCol] != null && row[agCol] !== '' && String(row[agCol]).toLowerCase() !== 'nan' ? Number(row[agCol]) : 0;
           rawOre = {
-            pbGrade: pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' ? Number(row[pbCol]) : 0,
-            znGrade: znCol >= 0 && row[znCol] != null && row[znCol] !== '' ? Number(row[znCol]) : 0,
-            agGrade: agCol >= 0 && row[agCol] != null && row[agCol] !== '' ? Number(row[agCol]) : 0,
+            pbGrade: pbVal,
+            znGrade: znVal,
+            agGrade: agVal,
           };
+          console.log(`Parsed 原矿: Pb=${pbVal}, Zn=${znVal}, Ag=${agVal} (row: ${JSON.stringify(row.slice(0, 5))})`);
         }
 
-        // Parse 铅精/铅精矿
+        // Parse 铅精/铅精矿（只解析品位，不解析水分）
         if (name.includes('铅精') || name.includes('精矿')) {
+          const pbVal = pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' && String(row[pbCol]).toLowerCase() !== 'nan' ? Number(row[pbCol]) : 0;
+          const znVal = znCol >= 0 && row[znCol] != null && row[znCol] !== '' && String(row[znCol]).toLowerCase() !== 'nan' ? Number(row[znCol]) : 0;
+          const agVal = agCol >= 0 && row[agCol] != null && row[agCol] !== '' && String(row[agCol]).toLowerCase() !== 'nan' ? Number(row[agCol]) : 0;
           concentrate = {
-            pbGrade: pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' ? Number(row[pbCol]) : 0,
-            znGrade: znCol >= 0 && row[znCol] != null && row[znCol] !== '' ? Number(row[znCol]) : 0,
-            agGrade: agCol >= 0 && row[agCol] != null && row[agCol] !== '' ? Number(row[agCol]) : 0,
-            moisture: moistureCol >= 0 && row[moistureCol] != null && row[moistureCol] !== '' ? Number(row[moistureCol]) : undefined,
+            pbGrade: pbVal,
+            znGrade: znVal,
+            agGrade: agVal,
           };
+          console.log(`Parsed 铅精: Pb=${pbVal}, Zn=${znVal}, Ag=${agVal} (row: ${JSON.stringify(row.slice(0, 5))})`);
         }
 
         // Parse 尾矿
         if (name.includes('尾矿')) {
+          const pbVal = pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' && String(row[pbCol]).toLowerCase() !== 'nan' ? Number(row[pbCol]) : 0;
+          const znVal = znCol >= 0 && row[znCol] != null && row[znCol] !== '' && String(row[znCol]).toLowerCase() !== 'nan' ? Number(row[znCol]) : 0;
+          const agVal = agCol >= 0 && row[agCol] != null && row[agCol] !== '' && String(row[agCol]).toLowerCase() !== 'nan' ? Number(row[agCol]) : 0;
+          const finenessVal = finenessCol >= 0 && row[finenessCol] != null && row[finenessCol] !== '' && String(row[finenessCol]).toLowerCase() !== 'nan' ? Number(row[finenessCol]) : undefined;
           tailings = {
-            pbGrade: pbCol >= 0 && row[pbCol] != null && row[pbCol] !== '' ? Number(row[pbCol]) : 0,
-            znGrade: znCol >= 0 && row[znCol] != null && row[znCol] !== '' ? Number(row[znCol]) : 0,
-            agGrade: agCol >= 0 && row[agCol] != null && row[agCol] !== '' ? Number(row[agCol]) : 0,
-            fineness: finenessCol >= 0 && row[finenessCol] != null && row[finenessCol] !== '' ? Number(row[finenessCol]) : undefined,
+            pbGrade: pbVal,
+            znGrade: znVal,
+            agGrade: agVal,
+            fineness: finenessVal,
           };
+          console.log(`Parsed 尾矿: Pb=${pbVal}, Zn=${znVal}, Ag=${agVal}, Fineness=${finenessVal} (row: ${JSON.stringify(row.slice(0, 5))})`);
         }
       }
     }

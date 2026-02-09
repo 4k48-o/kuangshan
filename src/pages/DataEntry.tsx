@@ -55,16 +55,17 @@ export const DataEntry: React.FC = () => {
       if (parsed.shiftType) setValue('shiftType', parsed.shiftType);
       
       if (parsed.rawOre) {
+        // 只填充品位数据，湿量和水分需要手动输入
         if (parsed.rawOre.pbGrade !== undefined) setValue('rawOre.pbGrade', parsed.rawOre.pbGrade);
         if (parsed.rawOre.znGrade !== undefined) setValue('rawOre.znGrade', parsed.rawOre.znGrade);
         if (parsed.rawOre.agGrade !== undefined) setValue('rawOre.agGrade', parsed.rawOre.agGrade);
       }
       
       if (parsed.concentrate) {
+        // 只填充品位数据，水分需要手动输入
         if (parsed.concentrate.pbGrade !== undefined) setValue('concentrate.pbGrade', parsed.concentrate.pbGrade);
         if (parsed.concentrate.znGrade !== undefined) setValue('concentrate.znGrade', parsed.concentrate.znGrade);
         if (parsed.concentrate.agGrade !== undefined) setValue('concentrate.agGrade', parsed.concentrate.agGrade);
-        if (parsed.concentrate.moisture !== undefined) setValue('concentrate.moisture', parsed.concentrate.moisture);
       }
       
       if (parsed.tailings) {
@@ -344,7 +345,7 @@ export const DataEntry: React.FC = () => {
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
           <h2 className="text-lg font-semibold mb-4 pb-2 border-b border-slate-100">尾矿数据</h2>
-          <InputGroup prefix="tailings" registerName="tailings" showFineness />
+          <InputGroup prefix="tailings" registerName="tailings" />
         </div>
 
         <div className="flex justify-end">
