@@ -111,6 +111,18 @@ export const apiClient = {
     return response.json();
   },
 
+  async deleteReport(id: string) {
+    const response = await fetch(`${API_BASE_URL}/reports/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '删除失败');
+    }
+    return response.json();
+  },
+
   async getAnalysisStats(startDate?: string, endDate?: string) {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);

@@ -13,12 +13,7 @@ export const DailyReport: React.FC = () => {
   
   // Manual Inputs State
   const [inputs, setInputs] = useState({
-    monthPlanRaw: '',
-    monthPlanConc: '',
     stockRaw: '',
-    stockConc: '',
-    salesConc: '',
-    remarks: ''
   });
 
   const fetchData = async () => {
@@ -49,8 +44,8 @@ export const DailyReport: React.FC = () => {
   if (loading) return <div className="p-8 text-center">加载中...</div>;
   
   // Helper to render cell
-  const Cell = ({ value, yellow = false, bold = false }: { value?: string | number, yellow?: boolean, bold?: boolean }) => (
-    <td className={`border border-black px-2 py-1 text-center text-sm ${yellow ? 'bg-yellow-200' : ''} ${bold ? 'font-bold' : ''}`}>
+  const Cell = ({ value, bold = false }: { value?: string | number, bold?: boolean }) => (
+    <td className={`border border-black px-2 py-1 text-center text-sm ${bold ? 'font-bold' : ''}`}>
       {value}
     </td>
   );
@@ -121,7 +116,6 @@ export const DailyReport: React.FC = () => {
                 <th className="border border-black px-2 py-1 w-12">序号</th>
                 <th className="border border-black px-2 py-1 w-32">名 称</th>
                 <th className="border border-black px-2 py-1 w-16">单位</th>
-                <th className="border border-black px-2 py-1">月计划</th>
                 <th className="border border-black px-2 py-1">本日累计</th>
                 <th className="border border-black px-2 py-1">本月累计</th>
                 <th className="border border-black px-2 py-1">本年累计</th>
@@ -134,10 +128,9 @@ export const DailyReport: React.FC = () => {
                 <Cell value="1" />
                 <Cell value="入厂矿石" bold />
                 <Cell value="吨" />
-                <InputCell field="monthPlanRaw" />
                 <td className="border border-black bg-gray-50"></td>
                 <td className="border border-black bg-gray-50"></td>
-                <td className="border border-black bg-yellow-200"></td>
+                <td className="border border-black"></td>
                 <td className="border border-black"></td>
                 </tr>
 
@@ -148,8 +141,7 @@ export const DailyReport: React.FC = () => {
                 <Cell value="吨" />
                 <td className="border border-black"></td>
                 <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black bg-yellow-200">
+                <td className="border border-black">
                     <input value={inputs.stockRaw} onChange={e=>setInputs({...inputs, stockRaw: e.target.value})} className="w-full bg-transparent text-center"/>
                 </td>
                 <td className="border border-black"></td>
@@ -159,14 +151,13 @@ export const DailyReport: React.FC = () => {
                 <tr>
                 <Cell value="3" />
                 <Cell value="入选原矿" bold />
-                <td colSpan={6} className="border border-black bg-gray-100"></td>
+                <td colSpan={5} className="border border-black bg-gray-100"></td>
                 </tr>
                 {/* 3.1 Wet/Dry/Moisture */}
                 <tr>
                 <Cell value="3.1" />
                 <Cell value="湿重" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.raw.wet.toFixed(2)} />
                 <Cell value={data?.month.raw.wet.toFixed(2)} />
                 <Cell value={data?.year.raw.wet.toFixed(2)} />
@@ -176,7 +167,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="干重" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.raw.dry.toFixed(2)} />
                 <Cell value={data?.month.raw.dry.toFixed(2)} />
                 <Cell value={data?.year.raw.dry.toFixed(2)} />
@@ -186,10 +176,9 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="水分" />
                 <Cell value="%" />
-                <td className="border border-black"></td>
-                <Cell value={data?.day.raw.moisture.toFixed(2)} yellow />
-                <Cell value={data?.month.raw.moisture.toFixed(2)} yellow />
-                <Cell value={data?.year.raw.moisture.toFixed(2)} yellow />
+                <Cell value={data?.day.raw.moisture.toFixed(2)} />
+                <Cell value={data?.month.raw.moisture.toFixed(2)} />
+                <Cell value={data?.year.raw.moisture.toFixed(2)} />
                 <td className="border border-black"></td>
                 </tr>
                 
@@ -198,7 +187,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="3.2" />
                 <Cell value="铅品位" />
                 <Cell value="%" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.raw.pbGrade.toFixed(2)} />
                 <Cell value={data?.month.raw.pbGrade.toFixed(2)} />
                 <Cell value={data?.year.raw.pbGrade.toFixed(2)} />
@@ -208,7 +196,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="铅金属量" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.raw.pbMetal.toFixed(3)} />
                 <Cell value={data?.month.raw.pbMetal.toFixed(3)} />
                 <Cell value={data?.year.raw.pbMetal.toFixed(3)} />
@@ -220,7 +207,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="3.3" />
                 <Cell value="银品位" />
                 <Cell value="克/吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.raw.agGrade.toFixed(2)} />
                 <Cell value={data?.month.raw.agGrade.toFixed(2)} />
                 <Cell value={data?.year.raw.agGrade.toFixed(2)} />
@@ -230,7 +216,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="银金属量" />
                 <Cell value="公斤" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.raw.agMetal.toFixed(4)} />
                 <Cell value={data?.month.raw.agMetal.toFixed(4)} />
                 <Cell value={data?.year.raw.agMetal.toFixed(4)} />
@@ -241,12 +226,12 @@ export const DailyReport: React.FC = () => {
                 <tr>
                 <Cell value="4" />
                 <Cell value="产出产品" bold />
-                <td colSpan={6} className="border border-black bg-gray-100"></td>
+                <td colSpan={5} className="border border-black bg-gray-100"></td>
                 </tr>
                 <tr>
                 <Cell value="4.1" />
                 <Cell value="铅精矿" bold />
-                <td colSpan={6} className="border border-black bg-gray-50"></td>
+                <td colSpan={5} className="border border-black bg-gray-50"></td>
                 </tr>
                 
                 {/* 4.1.1 Wet/Dry/Moisture */}
@@ -254,7 +239,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="4.1.1" />
                 <Cell value="湿重" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.conc.wet.toFixed(2)} />
                 <Cell value={data?.month.conc.wet.toFixed(2)} />
                 <Cell value={data?.year.conc.wet.toFixed(2)} />
@@ -264,7 +248,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="干重" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.conc.dry.toFixed(2)} />
                 <Cell value={data?.month.conc.dry.toFixed(2)} />
                 <Cell value={data?.year.conc.dry.toFixed(2)} />
@@ -274,10 +257,9 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="水分" />
                 <Cell value="%" />
-                <td className="border border-black"></td>
-                <Cell value={data?.day.conc.moisture.toFixed(2)} yellow />
-                <Cell value={data?.month.conc.moisture.toFixed(2)} yellow />
-                <Cell value={data?.year.conc.moisture.toFixed(2)} yellow />
+                <Cell value={data?.day.conc.moisture.toFixed(2)} />
+                <Cell value={data?.month.conc.moisture.toFixed(2)} />
+                <Cell value={data?.year.conc.moisture.toFixed(2)} />
                 <td className="border border-black"></td>
                 </tr>
 
@@ -286,7 +268,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="4.1.2" />
                 <Cell value="铅品位" />
                 <Cell value="%" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.conc.pbGrade.toFixed(2)} />
                 <Cell value={data?.month.conc.pbGrade.toFixed(2)} />
                 <Cell value={data?.year.conc.pbGrade.toFixed(2)} />
@@ -296,7 +277,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="铅金属量" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.conc.pbMetal.toFixed(3)} />
                 <Cell value={data?.month.conc.pbMetal.toFixed(3)} />
                 <Cell value={data?.year.conc.pbMetal.toFixed(3)} />
@@ -308,7 +288,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="4.1.3" />
                 <Cell value="银品位" />
                 <Cell value="克/吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.conc.agGrade.toFixed(2)} />
                 <Cell value={data?.month.conc.agGrade.toFixed(2)} />
                 <Cell value={data?.year.conc.agGrade.toFixed(2)} />
@@ -318,7 +297,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="银金属量" />
                 <Cell value="公斤" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.conc.agMetal.toFixed(4)} />
                 <Cell value={data?.month.conc.agMetal.toFixed(4)} />
                 <Cell value={data?.year.conc.agMetal.toFixed(4)} />
@@ -329,13 +307,12 @@ export const DailyReport: React.FC = () => {
                 <tr>
                 <Cell value="5" />
                 <Cell value="尾矿" bold />
-                <td colSpan={6} className="border border-black bg-gray-50"></td>
+                <td colSpan={5} className="border border-black bg-gray-50"></td>
                 </tr>
                 <tr>
                 <Cell value="5.1" />
                 <Cell value="干重" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.tail.dry.toFixed(2)} />
                 <Cell value={data?.month.tail.dry.toFixed(2)} />
                 <Cell value={data?.year.tail.dry.toFixed(2)} />
@@ -345,7 +322,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="5.2" />
                 <Cell value="铅品位" />
                 <Cell value="%" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.tail.pbGrade.toFixed(2)} />
                 <Cell value={data?.month.tail.pbGrade.toFixed(2)} />
                 <Cell value={data?.year.tail.pbGrade.toFixed(2)} />
@@ -355,7 +331,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="铅金属量" />
                 <Cell value="吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.tail.pbMetal.toFixed(3)} />
                 <Cell value={data?.month.tail.pbMetal.toFixed(3)} />
                 <Cell value={data?.year.tail.pbMetal.toFixed(3)} />
@@ -365,7 +340,6 @@ export const DailyReport: React.FC = () => {
                 <Cell value="5.3" />
                 <Cell value="银品位" />
                 <Cell value="克/吨" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.tail.agGrade.toFixed(2)} />
                 <Cell value={data?.month.tail.agGrade.toFixed(2)} />
                 <Cell value={data?.year.tail.agGrade.toFixed(2)} />
@@ -375,83 +349,10 @@ export const DailyReport: React.FC = () => {
                 <Cell value="" />
                 <Cell value="银金属量" />
                 <Cell value="公斤" />
-                <td className="border border-black"></td>
                 <Cell value={data?.day.tail.agMetal.toFixed(4)} />
                 <Cell value={data?.month.tail.agMetal.toFixed(4)} />
                 <Cell value={data?.year.tail.agMetal.toFixed(4)} />
                 <td className="border border-black"></td>
-                </tr>
-
-                {/* 6. Sales */}
-                <tr>
-                <Cell value="6" />
-                <Cell value="精矿销售" bold />
-                <td colSpan={6} className="border border-black bg-gray-50"></td>
-                </tr>
-                <tr>
-                <Cell value="6.1" />
-                <Cell value="销售铅精(湿重)" />
-                <Cell value="吨" />
-                <td className="border border-black"></td>
-                <InputCell field="salesConc" />
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                </tr>
-
-                {/* 7. Stock Conc */}
-                <tr>
-                <Cell value="7" />
-                <Cell value="库存精矿量" bold />
-                <td colSpan={6} className="border border-black bg-gray-50"></td>
-                </tr>
-                <tr>
-                <Cell value="7.1" />
-                <Cell value="精矿(湿重)" />
-                <Cell value="吨" />
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black bg-yellow-200">
-                    <input value={inputs.stockConc} onChange={e=>setInputs({...inputs, stockConc: e.target.value})} className="w-full bg-transparent text-center"/>
-                </td>
-                <td className="border border-black"></td>
-                </tr>
-
-                {/* 8. Production Status */}
-                <tr>
-                <Cell value="8" />
-                <Cell value="当日生产状况" bold />
-                <td colSpan={6} className="border border-black bg-gray-50"></td>
-                </tr>
-                <tr>
-                <Cell value="8.1" />
-                <Cell value="生产设备状况" />
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                </tr>
-                <tr>
-                <Cell value="8.2" />
-                <Cell value="生产状况" />
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
-                <td className="border border-black bg-yellow-200"></td>
-                <td className="border border-black"></td>
-                </tr>
-
-                {/* 9. Others */}
-                <tr>
-                <Cell value="9" />
-                <Cell value="其它" bold />
-                <td colSpan={6} className="border border-black">
-                    <input value={inputs.remarks} onChange={e=>setInputs({...inputs, remarks: e.target.value})} className="w-full bg-transparent"/>
-                </td>
                 </tr>
 
             </tbody>

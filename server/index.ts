@@ -302,6 +302,41 @@ app.post('/api/reports', async (req, res) => {
   }
 });
 
+// Delete a report by ID
+app.delete('/api/reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: '报告ID不能为空' });
+    }
+
+    // Check if report exists
+    const existing = await prisma.shiftData.findUnique({
+      where: { id },
+      include: {
+        rawOreData: true,
+        concentrateData: true,
+        tailingsData: true,
+        metalBalance: true,
+      },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: '报告不存在' });
+    }
+
+    // Delete the shift data (cascade will delete related data automatically)
+    await prisma.shiftData.delete({
+      where: { id },
+    });
+
+    res.json({ success: true, message: '删除成功' });
+  } catch (error: any) {
+    console.error('Delete report error:', error);
+    res.status(500).json({ error: '删除失败: ' + (error.message || '未知错误') });
+  }
+});
+
 // Get reports with pagination and filters (time range, shift type)
 app.get('/api/reports', async (req, res) => {
   try {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronRight, Search, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, RotateCcw, Trash2, AlertCircle } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { DatePicker } from '../components/ui/DatePicker';
 
@@ -18,6 +18,8 @@ export const MetalBalance: React.FC = () => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; date: string; shift: string } | null>(null);
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -81,6 +83,37 @@ export const MetalBalance: React.FC = () => {
         setExpandedRows(new Set());
     } else {
         setExpandedRows(new Set(reports.map(r => r.id)));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeletingId(id);
+      await apiClient.deleteReport(id);
+      // Refresh the list
+      const filters = {
+        startDate: appliedFilters.startDate || undefined,
+        endDate: appliedFilters.endDate || undefined,
+        shiftType: appliedFilters.shiftType || undefined,
+      };
+      // If current page has only 1 item and we're not on page 1, go to previous page
+      const targetPage = reports.length === 1 && page > 1 ? page - 1 : page;
+      const response = await apiClient.getReports(targetPage, 20, filters);
+      setReports(response.data);
+      setTotalPages(response.meta.totalPages);
+      if (targetPage !== page) {
+        setPage(targetPage);
+      }
+      setDeleteConfirm(null);
+      setError(null);
+      // Remove from expanded rows if it was expanded
+      const newExpanded = new Set(expandedRows);
+      newExpanded.delete(id);
+      setExpandedRows(newExpanded);
+    } catch (err: any) {
+      setError(err.message || '删除失败');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -161,6 +194,7 @@ export const MetalBalance: React.FC = () => {
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">银回收率 (%)</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">产率 (%)</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">富集比</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-20">操作</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
@@ -196,9 +230,22 @@ export const MetalBalance: React.FC = () => {
                 const denom = 100 - moistureConc;
                 const wetConc = denom > 0 && denom < 100 ? (dryConc / denom) * 100 : 0;
 
+                // 判断银回收率，用于高亮显示
+                // >98%: 红色背景，<90%: 黄色背景
+                const agRecovery = Number(mb?.agRecovery || 0);
+                const isHighAgRecovery = agRecovery > 98;
+                const isLowAgRecovery = agRecovery < 90;
+                
+                let rowBgClass = 'hover:bg-slate-50';
+                if (isHighAgRecovery) {
+                  rowBgClass = 'bg-red-50 hover:bg-red-100';
+                } else if (isLowAgRecovery) {
+                  rowBgClass = 'bg-yellow-50 hover:bg-yellow-100';
+                }
+
                 return (
                   <React.Fragment key={report.id}>
-                    <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => toggleRow(report.id)}>
+                    <tr className={`cursor-pointer ${rowBgClass}`} onClick={() => toggleRow(report.id)}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </td>
@@ -226,7 +273,11 @@ export const MetalBalance: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-medium text-right">
                         {Number(mb?.pbRecovery).toFixed(2)}%
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-medium text-right">
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
+                        isHighAgRecovery ? 'text-red-700 font-bold' : 
+                        isLowAgRecovery ? 'text-yellow-700 font-bold' : 
+                        'text-slate-900'
+                      }`}>
                         {Number(mb?.agRecovery).toFixed(2)}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-medium text-right">
@@ -235,10 +286,27 @@ export const MetalBalance: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-medium text-right">
                         {enrichment.toFixed(2)}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({
+                              id: report.id,
+                              date: format(new Date(report.shiftDate), 'yyyy-MM-dd'),
+                              shift: report.shiftType,
+                            });
+                          }}
+                          disabled={deletingId === report.id}
+                          className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="删除此条记录"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                     {isExpanded && (
-                      <tr className="bg-slate-50">
-                        <td colSpan={12} className="px-6 py-4">
+                      <tr className={isHighAgRecovery ? 'bg-red-50' : isLowAgRecovery ? 'bg-yellow-50' : 'bg-slate-50'}>
+                        <td colSpan={13} className="px-6 py-4">
                           <div className="text-sm">
                             <h4 className="font-semibold mb-2 text-slate-700">详细平衡表 (Sheet 2)</h4>
                             <table className="min-w-full divide-y divide-slate-300 border border-slate-200">
@@ -349,6 +417,51 @@ export const MetalBalance: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <AlertCircle className="w-6 h-6 text-red-600 mr-3" />
+                <h3 className="text-lg font-semibold text-slate-900">确认删除</h3>
+              </div>
+              <p className="text-slate-600 mb-6">
+                确定要删除 <span className="font-medium text-slate-900">{deleteConfirm.date} {deleteConfirm.shift}</span> 的记录吗？
+                <br />
+                <span className="text-sm text-slate-500">此操作不可恢复，将同时删除该记录的所有相关数据。</span>
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deletingId === deleteConfirm.id}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => handleDelete(deleteConfirm.id)}
+                  disabled={deletingId === deleteConfirm.id}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center"
+                >
+                  {deletingId === deleteConfirm.id ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      删除中...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      确认删除
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
