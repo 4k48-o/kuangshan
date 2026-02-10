@@ -1411,6 +1411,9 @@ app.post('/api/weighing/upload', upload.single('file'), async (req, res) => {
       const tareVal = Number(row[cols.tare]);
       const netVal = Number(row[cols.net]);
       if (!vehicleNo || (isNaN(grossVal) && isNaN(netVal))) continue;
+      if (vehicleNo.includes('合计')) continue;
+      const rowIsSummary = row.some((c: any) => String(c ?? '').trim().includes('合计'));
+      if (rowIsSummary) continue;
       const grossWeight = !isNaN(grossVal) ? grossVal : netVal + (isNaN(tareVal) ? 0 : tareVal);
       const tareWeight = !isNaN(tareVal) ? tareVal : grossWeight - (!isNaN(netVal) ? netVal : 0);
       const netWeight = !isNaN(netVal) ? netVal : grossWeight - tareWeight;
@@ -1845,7 +1848,9 @@ function parseSalesAssayExcel(filePath: string, fileName: string): {
     const row = data[r] || [];
     const cell0 = String(row[0] ?? '').trim();
     const cell1 = String(row[1] ?? '').trim();
-    if (cell0.includes('合计') || cell1.includes('合计')) break;
+    const cell2 = String(row[2] ?? '').trim();
+    const cell3 = String(row[3] ?? '').trim();
+    if ([cell0, cell1, cell2, cell3].some((s) => s.includes('合计'))) continue;
     const numVal = (col: number) => {
       const v = row[col];
       if (v == null || v === '') return null;
