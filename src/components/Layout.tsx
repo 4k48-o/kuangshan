@@ -11,7 +11,13 @@ import {
   LayoutDashboard,
   Activity,
   TrendingUp,
+  Scale,
   Settings,
+  Truck,
+  Upload,
+  History,
+  Users,
+  Package,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,13 +32,31 @@ type NavItemGroup = NavItemBase & { children: NavItemOne[] };
 const menuConfig: (NavItemLink | NavItemGroup | NavItemComingSoon)[] = [
   { path: '/', label: '数据录入', icon: ClipboardList },
   { path: '/balance', label: '金属平衡表', icon: BarChart3 },
+  { path: '/customers', label: '客户维护', icon: Users },
   {
     label: '报表',
     icon: FileText,
     children: [
       { path: '/daily-report', label: '日报表', icon: FileText },
       { path: '/monthly-report', label: '月报表', icon: FileText },
-      { label: '年报表', icon: FileText, comingSoon: true },
+      { path: '/yearly-report', label: '年报表', icon: FileText },
+      { path: '/weighing/monthly-report', label: '称重数据月报表', icon: FileText },
+    ],
+  },
+  {
+    label: '原矿入库',
+    icon: Truck,
+    children: [
+      { path: '/weighing/upload', label: '称重数据上传', icon: Upload },
+      { path: '/weighing/history', label: '称重数据历史', icon: History },
+    ],
+  },
+  {
+    label: '精矿销售',
+    icon: Package,
+    children: [
+      { path: '/sales-assay/upload', label: '上传出厂化验单', icon: Upload },
+      { path: '/sales-assay/history', label: '出厂化验单历史', icon: History },
     ],
   },
   {
@@ -43,6 +67,8 @@ const menuConfig: (NavItemLink | NavItemGroup | NavItemComingSoon)[] = [
       { path: '/analysis/efficiency', label: '生产效率', icon: Activity },
       { path: '/analysis/quality', label: '质量指标', icon: TrendingUp },
       { path: '/analysis/shift', label: '班次对比', icon: BarChart3 },
+      { path: '/analysis/metal-balance', label: '金属平衡分析', icon: Scale },
+      { path: '/analysis/sales-data', label: '销售数据分析', icon: Package },
     ],
   },
   { label: '系统设计', icon: Settings, comingSoon: true },
@@ -56,7 +82,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const { username, logout } = useAuth();
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({
-    报表: location.pathname.startsWith('/daily-report') || location.pathname.startsWith('/monthly-report'),
+    报表: location.pathname.startsWith('/daily-report') || location.pathname.startsWith('/monthly-report') || location.pathname.startsWith('/yearly-report') || location.pathname.startsWith('/weighing/monthly-report'),
+    原矿入库: location.pathname.startsWith('/weighing') && !location.pathname.startsWith('/weighing/monthly-report'),
+    精矿销售: location.pathname.startsWith('/sales-assay'),
     数据分析: location.pathname.startsWith('/analysis'),
   }));
 

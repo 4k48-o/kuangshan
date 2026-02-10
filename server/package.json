@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node -r dotenv/config index.ts",
+    "import-weighing": "ts-node -r dotenv/config import_weighing_from_excel.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

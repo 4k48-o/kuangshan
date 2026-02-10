@@ -100,3 +100,84 @@ model MetalBalance {
 
   @@map("metal_balance")
 }
+
+// 原矿入库称重记录（来自 Excel 上传）
+model RawOreWeighingRecord {
+  id           String   @id @default(uuid())
+  vehicleNo    String   @map("vehicle_no") @db.VarChar(32)      // 车号
+  weighTime    DateTime @map("weigh_time") @db.DateTime        // 上传时间/称重时间
+  grossWeight  Decimal  @map("gross_weight") @db.Decimal(12, 2) // 毛重 (吨)
+  tareWeight   Decimal  @map("tare_weight") @db.Decimal(12, 2)  // 皮重 (吨)
+  netWeight    Decimal  @map("net_weight") @db.Decimal(12, 2)   // 净重 (吨)
+  recordDate   DateTime @map("record_date") @db.Date           // 记录日期，便于按日查询
+  sourceFile   String?  @map("source_file") @db.VarChar(255)    // 来源文件名
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([recordDate])
+  @@index([vehicleNo])
+  @@map("raw_ore_weighing_record")
+}
+
+// 客户表（手动录入与维护）
+model Customer {
+  id                 String              @id @default(uuid())
+  name               String              @map("name") @db.VarChar(128)       // 客户名称
+  contact            String?             @map("contact") @db.VarChar(64)     // 客户联系人
+  phone              String?             @map("phone") @db.VarChar(32)       // 联系电话
+  code               String              @unique @map("code") @db.VarChar(32) // 客户编码
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  salesAssayDetails   SalesAssayDetail[]
+  salesAssayReports   SalesAssayReport[]
+
+  @@index([code])
+  @@map("customers")
+}
+
+// 精矿销售 - 出厂化验单主表（一个单子一条）
+model SalesAssayReport {
+  id            String   @id @default(uuid())
+  reportDate    DateTime @map("report_date") @db.Date     // 报告/出厂日期
+  productName   String   @map("product_name") @db.VarChar(64)   // 产品名称 如铅精粉
+  customerName  String   @map("customer_name") @db.VarChar(128) // 客户名称
+  customerId    String?  @map("customer_id")              // 关联客户表
+  vehicleCount  Int      @map("vehicle_count") // 车数
+  sourceFile    String   @map("source_file") @db.VarChar(255)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  details       SalesAssayDetail[]
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([reportDate])
+  @@index([customerId])
+  @@map("sales_assay_report")
+}
+
+// 出厂化验单明细（每车一条）
+model SalesAssayDetail {
+  id          String   @id @default(uuid())
+  reportId    String   @map("report_id")
+  seqNo       String?  @map("seq_no") @db.VarChar(16)    // 序号
+  vehicleNo   String?  @map("vehicle_no") @db.VarChar(32) // 车号
+  customerCode String? @map("customer_code") @db.VarChar(64) // 客户及编号（原始值）
+  customerId   String? @map("customer_id") // 关联客户表：用客户及编号第一个"-"前半部分模糊匹配
+  wetWeight   Decimal? @map("wet_weight") @db.Decimal(12, 4)  // 湿重 吨
+  moisture    Decimal? @map("moisture") @db.Decimal(8, 4)     // 水分%
+  dryWeight   Decimal? @map("dry_weight") @db.Decimal(12, 4)   // 干重 吨
+  pbGrade     Decimal? @map("pb_grade") @db.Decimal(8, 4)     // 铅%
+  znGrade     Decimal? @map("zn_grade") @db.Decimal(8, 4)     // 锌%
+  cuGrade     Decimal? @map("cu_grade") @db.Decimal(8, 4)     // 铜%
+  agGpt       Decimal? @map("ag_gpt") @db.Decimal(12, 4)     // 银 g/t
+  pbMetal     Decimal? @map("pb_metal") @db.Decimal(12, 4)   // 铅含量 T
+  znMetal     Decimal? @map("zn_metal") @db.Decimal(12, 4)
+  cuMetal     Decimal? @map("cu_metal") @db.Decimal(12, 4)
+  agKg        Decimal? @map("ag_kg") @db.Decimal(12, 4)      // 银 Kg
+
+  report      SalesAssayReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  customer    Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([reportId])
+  @@index([customerId])
+  @@map("sales_assay_detail")
+}
